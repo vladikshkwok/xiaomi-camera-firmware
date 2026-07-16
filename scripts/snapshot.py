@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Снимок листинга chuangmi-cdn -> snapshot.json (резерв, если CDN недоступен из браузера).
 Тянет все объекты под product/, оставляет только .zip/.rar пакеты прошивок."""
-import json, urllib.parse, urllib.request, datetime, sys
+import json, os, time, urllib.parse, urllib.request, datetime, sys
 
+# ВНИМАНИЕ: листинг отдаёт только этот хост (xiaomi.com). Он расположен в Китае и
+# может быть недоступен с egress-IP GitHub Actions (таймаут). Скрипт это переживает:
+# при неудаче он НЕ трогает существующий snapshot.json и завершается успешно.
 BASE = "https://cnbj2.fds.api.xiaomi.com/chuangmi-cdn"
 
 def fetch_all(prefix="product/"):
@@ -10,7 +13,7 @@ def fetch_all(prefix="product/"):
     while True:
         q = urllib.parse.urlencode({"prefix": prefix, "maxKeys": "1000", "marker": marker})
         req = urllib.request.Request(BASE + "?" + q, headers={"User-Agent": "snapshot-bot"})
-        with urllib.request.urlopen(req, timeout=60) as r:
+        with urllib.request.urlopen(req, timeout=25) as r:
             d = json.load(r)
         objs.extend(d.get("objects", []))
         pages += 1
@@ -21,8 +24,27 @@ def fetch_all(prefix="product/"):
             break
     return objs
 
+def fetch_all_retry(attempts=3):
+    last = None
+    for i in range(1, attempts + 1):
+        try:
+            return fetch_all()
+        except Exception as e:
+            last = e
+            print(f"попытка {i}/{attempts} не удалась: {e}", file=sys.stderr)
+            time.sleep(3)
+    raise last
+
 def main():
-    objs = fetch_all()
+    try:
+        objs = fetch_all_retry()
+    except Exception as e:
+        print(f"WARN: CDN недоступен ({e}).", file=sys.stderr)
+        if os.path.exists("snapshot.json"):
+            print("Оставляю прежний snapshot.json без изменений.")
+            return 0
+        print("ERROR: и прежнего snapshot.json нет.", file=sys.stderr)
+        return 1
     pkg = [
         {"name": o["name"], "size": o.get("size", 0), "uploadTime": o.get("uploadTime", 0)}
         for o in objs
