@@ -56,10 +56,7 @@ ol.steps li::marker{color:var(--accent);font-family:var(--mono);font-weight:700}
 .btn{font-family:var(--mono);font-size:13px;padding:0 15px;border:1px solid var(--line2);border-radius:11px;background:var(--panel);color:var(--ink2);cursor:pointer;box-shadow:var(--shadow);white-space:nowrap}
 .btn:hover{color:var(--accent-ink);border-color:var(--accent)}
 #count{font-size:12.5px;color:var(--ink3);margin:9px 2px 0;font-family:var(--mono);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.pin{border:1px solid var(--accent);background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 8%,var(--panel)),var(--panel));border-radius:14px;padding:2px 6px 8px;margin:8px 0 26px;box-shadow:var(--shadow)}
-.pinhdr{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink);padding:11px 12px 2px;font-weight:700}
 .row{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:8px 0;padding:14px 16px;box-shadow:var(--shadow)}
-.pin .row{margin:0;border:none;box-shadow:none;background:transparent}
 .rtop{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap}
 .code{font-family:var(--mono);font-size:16.5px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
 .mname{font-size:13px;color:var(--ink2);margin-left:4px}
@@ -110,7 +107,7 @@ footer a{color:var(--accent-ink)}
       <li>Подождите 10–15 секунд и отпустите кнопку сброса (индикатор должен стать <b>белым</b>).</li>
       <li>Подождите 1–2 минуты — идёт восстановление прошивки и загрузка устройства.</li>
     </ol>
-    <div class="approx">Возможно, на нашей камере (C701) кнопку сброса зажимать не нужно — она сама начнёт устанавливать прошивку с карты. Ставьте только «свой» вариант: IPC-код файла должен совпадать с кодом на дне камеры. Даты объектов — метка пересинхронизации хранилища, а не релиз; ориентир — версия/билд.</div>
+    <div class="approx">На некоторых моделях кнопку сброса зажимать не нужно — камера сама начинает устанавливать прошивку с карты. Ставьте только подходящую прошивку: IPC-код файла должен совпадать с кодом на дне камеры. Даты объектов — метка пересинхронизации хранилища, а не релиз; ориентир — версия/билд.</div>
   </div>
 
   <div class="searchbar">
@@ -121,7 +118,6 @@ footer a{color:var(--accent-ink)}
     <div id="count"><span id="count-l"></span><span id="count-r"></span></div>
   </div>
 
-  <div id="pinwrap"></div>
   <div id="status"><span class="spin"></span>Загружаю листинг с CDN…</div>
   <div id="list"></div>
 
@@ -136,7 +132,6 @@ footer a{color:var(--accent-ink)}
 <script>
 const LIST_BASE="https://cnbj2.fds.api.xiaomi.com/chuangmi-cdn";
 const DL_BASE="https://cdn.cnbj2.fds.api.mi-img.com/chuangmi-cdn/";
-const PIN="IPC079AE2";
 const SKIP=new Set(["common","desktop-app","windows_client","chuangmi.lock.hmi501","chuangmi.lock.hmi503"]);
 const el=id=>document.getElementById(id);
 let MODELS={}, RECS=[];
@@ -202,8 +197,6 @@ function rowInner(r){
 function render(filter){
   const f=(filter||"").trim().toLowerCase();
   let shown=0;
-  const pin=RECS.find(r=>r.code===PIN);
-  el("pinwrap").innerHTML=(!f&&pin)?`<div class="pin"><div class="pinhdr">★ Ваша камера — C701 (chuangmi.camera.079ae2)</div><div class="row">${rowInner(pin)}</div></div>`:"";
   el("list").innerHTML=RECS.map(r=>{
     const hay=(r.code+" "+r.name+" "+r.vers.map(v=>(v.v?v.v+"_"+v.b:"")+" "+v.file).join(" ")).toLowerCase();
     const match=!f||hay.includes(f); if(match)shown++;
@@ -214,7 +207,7 @@ function render(filter){
 
 async function load(){
   el("status").style.display=""; el("status").className=""; el("status").innerHTML='<span class="spin"></span>Загружаю листинг с CDN…';
-  el("list").innerHTML=""; el("pinwrap").innerHTML="";
+  el("list").innerHTML="";
   try{ MODELS=await (await fetch("models.json",{cache:"no-store"})).json(); }catch(e){ MODELS=MODELS||{}; }
   let objs=null, srcNote="";
   try{
