@@ -1,0 +1,12 @@
+{
+  "_comment": "IPC-код (папка в chuangmi-cdn/product/) -> человекочитаемое имя модели. Дополняйте через PR. Ключи чувствительны к регистру; index.html пробует и lower-case.",
+  "IPC079AE2": "Smart Camera C701 · MJSXJ27CM · chuangmi.camera.079ae2",
+  "IPC079AC1": "Smart Camera C701 · MJSXJ27CM · chuangmi.camera.079ac1",
+  "IPC081A01": "Smart Camera C700 · chuangmi.camera.081",
+  "IPC081AE2": "Smart Camera C700 · chuangmi.camera.081",
+  "ipc006": "Mi Home Security Camera Basic 1080p · CMSXJ01C",
+  "ipc021": "Mi 360° Home Security Camera 1080p · MJSXJ06CM",
+  "IPC021A04": "Mi 360° Home Security Camera 1080p · MJSXJ06CM",
+  "IPC021E01": "Mi 360° Home Security Camera 1080p · MJSXJ06CM",
+  "IPC021E02": "Mi 360° Home Security Camera 1080p · MJSXJ06CM"
+}
