@@ -44,6 +44,11 @@ h1{font-size:clamp(26px,4.5vw,40px);line-height:1.08;letter-spacing:-.02em;margi
 .stat b{font-family:var(--mono);font-size:20px;font-variant-numeric:tabular-nums;display:block;letter-spacing:-.01em}
 .stat span{font-size:11.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em}
 .note{font-size:13px;color:var(--ink2);background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:12px 14px;margin:16px 0}
+.approx{color:var(--ink3);font-style:italic}
+ol.steps{margin:10px 0 8px;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+ol.steps li{padding-left:3px}
+ol.steps li::marker{color:var(--accent);font-family:var(--mono);font-weight:700}
+.note .approx:last-child{display:block;margin-top:10px;border-top:1px dashed var(--line2);padding-top:9px;font-size:12.5px}
 .searchbar{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 74%,transparent);padding:14px 0 12px;margin-top:14px}
 .searchrow{display:flex;gap:8px}
 #q{flex:1;font-family:var(--mono);font-size:15px;padding:13px 15px;border:1px solid var(--line2);border-radius:11px;background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
@@ -95,7 +100,18 @@ footer a{color:var(--accent-ink)}
     <div class="stat"><b id="s-size">—</b><span>суммарно</span></div>
   </div>
 
-  <div class="note"><b>Как прошивать:</b> microSD → формат <b>FAT32</b> → распаковать zip → скопировать <code>tf_recovery.img</code> в корень карты → вставить в камеру → зажать <b>Reset ~3&nbsp;сек</b> до жёлтого мигания → ждать перезагрузки, не отключая питание. Ставьте только «свой» вариант — совпадение IPC-кода с дном камеры. Даты объектов — метка пересинхронизации хранилища, а не релиз; ориентир — версия/билд.</div>
+  <div class="note">
+    <b>Как прошивать</b> <span class="approx">— инструкция примерная, от модели к модели может отличаться</span>
+    <ol class="steps">
+      <li>Скачать <code>.zip</code> и разархивировать <b>в корень</b> microSD-карты (файловая система <b>FAT32</b>).</li>
+      <li>Выключите устройство, отключив питание, и установите SD-карту.</li>
+      <li>Нажмите кнопку сброса (Reset).</li>
+      <li>Продолжая удерживать кнопку сброса, включите камеру, подав питание.</li>
+      <li>Подождите 10–15 секунд и отпустите кнопку сброса (индикатор должен стать <b>белым</b>).</li>
+      <li>Подождите 1–2 минуты — идёт восстановление прошивки и загрузка устройства.</li>
+    </ol>
+    <div class="approx">Возможно, на нашей камере (C701) кнопку сброса зажимать не нужно — она сама начнёт устанавливать прошивку с карты. Ставьте только «свой» вариант: IPC-код файла должен совпадать с кодом на дне камеры. Даты объектов — метка пересинхронизации хранилища, а не релиз; ориентир — версия/билд.</div>
+  </div>
 
   <div class="searchbar">
     <div class="searchrow">
@@ -197,27 +213,45 @@ function render(filter){
 }
 
 async function load(){
-  el("status").className=""; el("status").innerHTML='<span class="spin"></span>Загружаю листинг с CDN…';
+  el("status").style.display=""; el("status").className=""; el("status").innerHTML='<span class="spin"></span>Загружаю листинг с CDN…';
   el("list").innerHTML=""; el("pinwrap").innerHTML="";
+  try{ MODELS=await (await fetch("models.json",{cache:"no-store"})).json(); }catch(e){ MODELS=MODELS||{}; }
+  let objs=null, srcNote="";
   try{
-    try{ MODELS=await (await fetch("models.json",{cache:"no-store"})).json(); }catch(e){ MODELS={}; }
-    const objs=await fetchAll();
-    RECS=build(objs);
-    const pkg=RECS.reduce((s,r)=>s+r.n,0);
-    const bytes=RECS.reduce((s,r)=>s+r.vers.reduce((a,v)=>a+v.size,0),0);
-    el("s-models").textContent=RECS.length;
-    el("s-pkg").textContent=pkg;
-    el("s-size").textContent=human(bytes);
-    el("count-r").textContent="обновлено "+new Date().toLocaleTimeString();
-    el("status").style.display="none";
-    render(el("q").value);
+    objs=await fetchAll();
+    srcNote="обновлено "+new Date().toLocaleTimeString()+" · live CDN";
   }catch(err){
-    el("status").className="err";
-    el("status").innerHTML="Не удалось загрузить с CDN: "+esc(err.message)+". Нажмите «↻ CDN» для повтора.";
+    try{
+      const s=await fetch("snapshot.json",{cache:"no-store"});
+      if(!s.ok) throw new Error("HTTP "+s.status);
+      const snap=await s.json();
+      objs=snap.objects||snap;
+      srcNote="⚠ CDN недоступен — резервный снимок от "+esc(snap.generated||"?");
+    }catch(e2){
+      el("status").className="err";
+      el("status").innerHTML="Не удалось загрузить с CDN: "+esc(err.message)+". Резервный снимок тоже недоступен. Нажмите «↻ CDN» для повтора.";
+      return;
+    }
   }
+  RECS=build(objs);
+  const pkg=RECS.reduce((s,r)=>s+r.n,0);
+  const bytes=RECS.reduce((s,r)=>s+r.vers.reduce((a,v)=>a+v.size,0),0);
+  el("s-models").textContent=RECS.length;
+  el("s-pkg").textContent=pkg;
+  el("s-size").textContent=human(bytes);
+  el("count-r").textContent=srcNote;
+  el("status").style.display="none";
+  render(el("q").value);
 }
-el("q").addEventListener("input",e=>render(e.target.value));
-el("reload").addEventListener("click",()=>{el("status").style.display="";load();});
+// deep-link ?q= — предзаполнить поиск и держать URL в актуальном состоянии
+function syncUrl(v){
+  const u=new URL(location.href);
+  if(v) u.searchParams.set("q",v); else u.searchParams.delete("q");
+  history.replaceState(null,"",u);
+}
+el("q").value=new URLSearchParams(location.search).get("q")||"";
+el("q").addEventListener("input",e=>{render(e.target.value);syncUrl(e.target.value.trim());});
+el("reload").addEventListener("click",()=>load());
 load();
 </script>
 </body>
